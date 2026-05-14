@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>AI Diagnosis Result</title>
+
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+    >
+
+    <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+    >
+
+    <style>
+
+        *{
+            margin:0;
+            padding:0;
+            box-sizing:border-box;
+            font-family:'Segoe UI',sans-serif;
+        }
+
+        body{
+
+            background:
+            linear-gradient(
+                rgba(2,6,23,0.95),
+                rgba(2,6,23,0.97)
+            ),
+
+            url("/static/images/brain_bg.jpg");
+
+            background-size:cover;
+            background-position:center;
+
+            min-height:100vh;
+
+            color:white;
+
+            overflow-x:hidden;
+        }
+
+        .sidebar{
+
+            position:fixed;
+
+            top:0;
+            left:0;
+
+            width:100px;
+            height:100vh;
+
+            background:rgba(15,23,42,0.8);
+
+            backdrop-filter:blur(20px);
+
+            border-right:1px solid rgba(255,255,255,0.08);
+
+            transition:0.4s;
+
+            z-index:1000;
+
+            padding-top:25px;
+        }
+
+        .sidebar:hover{
+            width:260px;
+        }
+
+        .sidebar ul{
+            list-style:none;
+            padding-left:20px;
+        }
+
+        .sidebar ul li{
+
+            margin:35px 0;
+
+            display:flex;
+            align-items:center;
+
+            cursor:pointer;
+        }
+
+        .sidebar ul li i{
+
+            min-width:50px;
+
+            font-size:24px;
+
+            color:#38bdf8;
+        }
+
+        .sidebar ul li span{
+
+            opacity:0;
+
+            transition:0.4s;
+
+            white-space:nowrap;
+
+            font-size:18px;
+        }
+
+        .sidebar:hover ul li span{
+            opacity:1;
+        }
+
+        .sidebar ul li:hover{
+            color:#38bdf8;
+        }
+
+        .main{
+
+            margin-left:110px;
+
+            padding:40px;
+
+            transition:0.4s;
+        }
+
+        .sidebar:hover ~ .main{
+            margin-left:260px;
+        }
+
+        .hero{
+
+            background:
+            linear-gradient(
+                rgba(15,23,42,0.92),
+                rgba(15,23,42,0.92)
+            );
+
+            border:1px solid rgba(255,255,255,0.08);
+
+            border-radius:30px;
+
+            padding:40px;
+
+            box-shadow:0 0 30px rgba(56,189,248,0.15);
+
+            margin-bottom:35px;
+        }
+
+        .hero h1{
+
+            font-size:50px;
+
+            font-weight:700;
+
+            margin-bottom:10px;
+        }
+
+        .hero p{
+
+            color:#cbd5e1;
+
+            font-size:18px;
+        }
+
+        .image-card{
+
+            background:rgba(15,23,42,0.92);
+
+            border-radius:30px;
+
+            padding:25px;
+
+            border:1px solid rgba(255,255,255,0.08);
+
+            height:100%;
+        }
+
+        .section-title{
+
+            font-size:24px;
+
+            font-weight:600;
+
+            margin-bottom:20px;
+        }
+
+        .image-box{
+
+            overflow:hidden;
+
+            border-radius:20px;
+
+            border:2px solid rgba(255,255,255,0.08);
+        }
+
+        .image-box img{
+
+            width:100%;
+
+            border-radius:20px;
+
+            transition:0.4s;
+        }
+
+        .image-box img:hover{
+
+            transform:scale(1.03);
+        }
+
+        .prediction-card{
+
+            background:rgba(15,23,42,0.92);
+
+            border-radius:30px;
+
+            padding:30px;
+
+            border:1px solid rgba(255,255,255,0.08);
+
+            height:100%;
+
+            transition:0.4s;
+        }
+
+        .prediction-card:hover{
+
+            transform:translateY(-6px);
+
+            border-color:#38bdf8;
+
+            box-shadow:0 0 20px rgba(56,189,248,0.2);
+        }
+
+        .prediction-icon{
+
+            width:70px;
+            height:70px;
+
+            border-radius:20px;
+
+            background:#020617;
+
+            display:flex;
+            align-items:center;
+            justify-content:center;
+
+            margin-bottom:20px;
+        }
+
+        .prediction-icon i{
+
+            font-size:30px;
+
+            color:#38bdf8;
+        }
+
+        .prediction-title{
+
+            font-size:24px;
+
+            font-weight:600;
+
+            margin-bottom:15px;
+        }
+
+        .prediction-value{
+
+            font-size:42px;
+
+            font-weight:700;
+
+            color:#ef4444;
+        }
+
+        .prediction-desc{
+
+            color:#cbd5e1;
+
+            margin-top:10px;
+        }
+
+        .gemini-panel{
+
+            margin-top:35px;
+
+            background:rgba(15,23,42,0.92);
+
+            border-radius:30px;
+
+            padding:40px;
+
+            border:1px solid rgba(255,255,255,0.08);
+        }
+
+        .gemini-title{
+
+            font-size:34px;
+
+            font-weight:700;
+
+            margin-bottom:25px;
+        }
+
+        .gemini-box{
+
+            background:#020617;
+
+            border-radius:25px;
+
+            padding:30px;
+
+            line-height:1.9;
+
+            color:#cbd5e1;
+
+            border:1px solid rgba(255,255,255,0.06);
+        }
+
+        .btn-back{
+
+            margin-top:35px;
+
+            background:#38bdf8;
+
+            border:none;
+
+            color:white;
+
+            padding:15px 35px;
+
+            border-radius:15px;
+
+            font-size:18px;
+
+            transition:0.4s;
+        }
+
+        .btn-back:hover{
+
+            background:#0ea5e9;
+
+            transform:scale(1.05);
+        }
+
+
+        .footer{
+
+            margin-top:40px;
+
+            text-align:center;
+
+            color:#94a3b8;
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+<div class="sidebar">
+
+    <ul>
+        <li>
+            <i class="fa-solid fa-house"></i>
+            <span>
+                <a href="/" style="text-decoration:none;color:inherit;">
+                    Dashboard
+                </a>
+            </span>
+        </li>
+
+        <li>
+            <i class="fa-solid fa-brain"></i>
+            <span>
+                <a href="/analysis" style="text-decoration:none;color:inherit;">
+                    MRI Analysis
+                </a>
+            </span>
+        </li>
+
+    </ul>
+
+</div>
+
+<!-- ================================================= -->
+<!-- MAIN -->
+<!-- ================================================= -->
+
+<div class="main">
+
+    <!-- HERO -->
+
+    <div class="hero">
+
+        <h1>
+            AI MRI Diagnosis Result
+        </h1>
+
+        <p>
+
+            Multimodal medical imaging analysis
+            powered by ResNet50 CNN,
+            Swin Transformer,
+            Grad-CAM visualization,
+            and Gemini AI reasoning.
+
+        </p>
+
+    </div>
+
+    <!-- MRI + GRADCAM -->
+
+    <div class="row g-4">
+
+        <div class="col-md-6">
+
+            <div class="image-card">
+
+                <div class="section-title">
+                    Original MRI Scan
+                </div>
+
+                <div class="image-box">
+
+                    <img src="{{ original_image }}">
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="col-md-6">
+
+            <div class="image-card">
+
+                <div class="section-title">
+                    Grad-CAM Heatmap
+                </div>
+
+                <div class="image-box">
+
+                    <img src="{{ gradcam_image }}">
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- PREDICTIONS -->
+
+    <div class="row mt-4 g-4">
+
+        <div class="col-md-6">
+
+            <div class="prediction-card">
+
+                <div class="prediction-icon">
+                    <i class="fa-solid fa-brain"></i>
+                </div>
+
+                <div class="prediction-title">
+                    ResNet50 Prediction
+                </div>
+
+                <div class="prediction-value">
+
+                    {{ resnet_prediction }}%
+
+                </div>
+
+                <div class="prediction-desc">
+
+                    CNN-based medical image classification
+                    confidence score.
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="col-md-6">
+
+            <div class="prediction-card">
+
+                <div class="prediction-icon">
+                    <i class="fa-solid fa-eye"></i>
+                </div>
+
+                <div class="prediction-title">
+                    Swin Transformer
+                </div>
+
+                <div class="prediction-value">
+
+                    {{ swin_prediction }}%
+
+                </div>
+
+                <div class="prediction-desc">
+
+                    Vision Transformer tumor
+                    detection confidence score.
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="gemini-panel">
+
+        <div class="gemini-title">
+
+            <i class="fa-solid fa-robot"></i>
+
+            Gemini AI Medical Analysis
+
+        </div>
+
+        <div class="gemini-box">
+
+            {{ gemini_report | safe }}
+
+        </div>
+
+    </div>
+
+    <a href="/">
+
+        <button class="btn btn-back">
+
+            <i class="fa-solid fa-arrow-left"></i>
+
+            Analyze Another Image
+
+        </button>
+
+    </a>
+
+    <div class="footer">
+
+        AI Medical Imaging System © 2026
+
+    </div>
+
+</div>
+
+</body>
+
+</html>
