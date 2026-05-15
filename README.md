@@ -34,3 +34,5 @@ pip install scikit-learn
 pip install reportlab
 
 pip install google-genai
+
+to straight away open our application without downloading the resources, https://unhappily-browbeat-troubling.ngrok-free.dev/
