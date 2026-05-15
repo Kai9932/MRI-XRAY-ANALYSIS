@@ -34,7 +34,7 @@ from reportlab.lib.styles import getSampleStyleSheet
 
 app = FastAPI()
 #gemini ai LLM 
-GEMINI_API_KEY = "AIzaSyDLaaD3_Yub-g7oabBE_B7NK60AJ_qCalE"
+GEMINI_API_KEY = "AIzaSyAGrwpO4BgaYdhyLVdI6PywpxaxqMdRaUA"
 
 client = genai.Client(
     api_key=GEMINI_API_KEY
@@ -69,6 +69,15 @@ resnet_model = load_model(
 )
 
 print("ResNet50 loaded successfully.")
+
+#brain validator
+print("Loading Brain Validator...")
+
+brain_validator_model = load_model(
+    "models/brain_validator_mobilenetv2_final.h5"
+)
+
+print("Brain Validator loaded successfully.")
 
 print("Loading Swin Transformer...")
 
@@ -120,6 +129,21 @@ def preprocess_resnet(image_path):
 
     return img
 
+# VALIDATOR PREPROCESS
+def preprocess_validator(image_path):
+
+    img = Image.open(image_path).convert("RGB")
+
+    img = img.resize((224, 224))
+
+    img = np.array(img) / 255.0
+
+    img = np.expand_dims(
+        img,
+        axis=0
+    )
+
+    return img
 
 def preprocess_swin(image_path):
 
@@ -249,7 +273,69 @@ async def predict(
             file.file,
             buffer
         )
+    #brain image validator
+    validator_img = preprocess_validator(file_path)
 
+    validator_prediction = brain_validator_model.predict(
+        validator_img
+    )[0][0]
+
+    validator_probability = round(
+        float(validator_prediction) * 100,
+        2
+    )
+
+    print(
+        "Brain Validator Confidence:",
+        validator_probability
+    )
+
+    # IF IMAGE IS NOT BRAIN MRI
+
+    if validator_probability >= 50:
+
+        return templates.TemplateResponse(
+            request,
+            "result.html",
+            {
+                "request": request,
+
+                "original_image": "/" + file_path,
+
+                "gradcam_image": "/" + file_path,
+
+                "resnet_prediction": "Rejected",
+
+                "swin_prediction": "Rejected",
+
+                "gemini_report": f"""
+
+                <h2 style='color:red;'>
+
+                Invalid Medical Image
+
+                </h2>
+
+                <br/>
+
+                The uploaded image does not appear
+                to be a valid brain MRI scan.
+
+                <br/><br/>
+
+                Brain Validator Confidence:
+                <b>{validator_probability}%</b>
+
+                <br/><br/>
+
+                Please upload a valid
+                brain MRI image.
+
+                """,
+
+                "pdf_report": ""
+            }
+        )    
     resnet_img = preprocess_resnet(file_path)
 
     resnet_prediction = resnet_model.predict(
