@@ -1,7 +1,3 @@
-# ============================================================
-# FILE: resnet50.py
-# ============================================================
-
 import tensorflow as tf
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.applications import ResNet50
@@ -24,23 +20,11 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 
-# ============================================================
-# DATASET PATH
-# ============================================================
-
 DATASET_PATH = r"C:\Users\User\Desktop\WK xmum\machine learning\archive\brain_dataset"
-
-# ============================================================
-# SETTINGS
-# ============================================================
 
 IMG_SIZE = 224
 BATCH_SIZE = 16
 EPOCHS = 15
-
-# ============================================================
-# DATA AUGMENTATION
-# ============================================================
 
 train_datagen = ImageDataGenerator(
     rescale=1./255,
@@ -58,10 +42,6 @@ train_datagen = ImageDataGenerator(
     validation_split=0.2
 )
 
-# ============================================================
-# TRAIN SET
-# ============================================================
-
 train_set = train_datagen.flow_from_directory(
     DATASET_PATH,
 
@@ -75,10 +55,6 @@ train_set = train_datagen.flow_from_directory(
 
     shuffle=True
 )
-
-# ============================================================
-# VALIDATION SET
-# ============================================================
 
 val_set = train_datagen.flow_from_directory(
     DATASET_PATH,
@@ -96,10 +72,6 @@ val_set = train_datagen.flow_from_directory(
 
 print(train_set.class_indices)
 
-# ============================================================
-# LOAD RESNET50
-# ============================================================
-
 base_model = ResNet50(
     weights='imagenet',
 
@@ -110,10 +82,6 @@ base_model = ResNet50(
 
 # Freeze backbone
 base_model.trainable = False
-
-# ============================================================
-# BUILD MODEL
-# ============================================================
 
 x = base_model.output
 
@@ -130,10 +98,6 @@ model = Model(
     outputs=output
 )
 
-# ============================================================
-# COMPILE MODEL
-# ============================================================
-
 model.compile(
     optimizer=Adam(learning_rate=0.0001),
 
@@ -146,10 +110,6 @@ model.compile(
         tf.keras.metrics.Recall(name='recall')
     ]
 )
-
-# ============================================================
-# CALLBACKS
-# ============================================================
 
 early_stop = EarlyStopping(
     monitor='val_loss',
@@ -177,10 +137,6 @@ checkpoint = ModelCheckpoint(
     save_best_only=True
 )
 
-# ============================================================
-# TRAINING
-# ============================================================
-
 history = model.fit(
     train_set,
 
@@ -194,10 +150,6 @@ history = model.fit(
         checkpoint
     ]
 )
-
-# ============================================================
-# FINE TUNING
-# ============================================================
 
 for layer in base_model.layers[:-30]:
     layer.trainable = False
@@ -221,10 +173,6 @@ history_finetune = model.fit(
     epochs=5
 )
 
-# ============================================================
-# ACCURACY GRAPH
-# ============================================================
-
 plt.plot(
     history.history['accuracy'],
     label='Training Accuracy'
@@ -244,10 +192,6 @@ plt.ylabel('Accuracy')
 plt.legend()
 
 plt.show()
-
-# ============================================================
-# LOSS GRAPH
-# ============================================================
 
 plt.plot(
     history.history['loss'],
@@ -269,10 +213,6 @@ plt.legend()
 
 plt.show()
 
-# ============================================================
-# PREDICTIONS
-# ============================================================
-
 val_set.reset()
 
 predictions = model.predict(val_set)
@@ -280,10 +220,6 @@ predictions = model.predict(val_set)
 y_pred = (predictions > 0.5).astype(int)
 
 y_true = val_set.classes
-
-# ============================================================
-# CONFUSION MATRIX
-# ============================================================
 
 cm = confusion_matrix(y_true, y_pred)
 
@@ -311,10 +247,6 @@ plt.ylabel('Actual')
 
 plt.show()
 
-# ============================================================
-# CLASSIFICATION REPORT
-# ============================================================
-
 print("\nClassification Report:\n")
 
 print(classification_report(
@@ -324,10 +256,6 @@ print(classification_report(
 
     target_names=['No Tumor', 'Tumor']
 ))
-
-# ============================================================
-# SAVE MODEL
-# ============================================================
 
 model.save("final_hybrid_resnet50_model.h5")
 
