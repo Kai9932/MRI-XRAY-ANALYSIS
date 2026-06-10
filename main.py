@@ -34,6 +34,8 @@ from reportlab.lib.styles import getSampleStyleSheet
 from agno.agent import Agent
 from agno.models.google import Gemini
 
+from openai import OpenAI
+
 app = FastAPI()
 #gemini ai LLM 
 GOOGLE_API_KEY = "AIzaSyBmTgGQgnumWQnoUsIoYetEJE2n68tDtrQ"
@@ -43,6 +45,14 @@ medical_agent = Agent(
     model=Gemini(id="gemini-2.0-flash"),
     markdown=True
 )
+
+from openai import OpenAI
+
+client = OpenAI(
+    api_key="sk-aecb2c7ebfe84d898e74dbe2fb429c42",
+    base_url="https://api.deepseek.com"
+)
+
 app.mount(
     "/static",
     StaticFiles(directory="static"),
@@ -383,171 +393,304 @@ async def predict(
         diagnosis = "No Tumor Detected"
 
 #gemini report
+
+    if diagnosis == "No Tumor Detected":
+
+        final_confidence = round(
+            100 - average_probability,
+            2
+        )
+
+    else:
+
+        final_confidence = average_probability
+
+
     prompt = f"""
 
-    You are an advanced AI medical imaging assistant specializing
-    in brain tumour MRI analysis.
+    You are a professional AI medical assistant.
 
-    Analyze the following AI prediction results and generate
-    a professional but easy-to-understand medical analysis report.
+    The final MRI analysis result is:
 
-    MRI Analysis Results:
+    Diagnosis: {diagnosis}
 
-    - ResNet50 Confidence: {resnet_probability}%
-    - Swin Transformer Confidence: {swin_probability}%
-    - Combined AI Confidence: {average_probability}%
-    - Final Diagnosis: {diagnosis}
+    Confidence Score: {final_confidence}%
 
-    Your report must include:
+    IMPORTANT RULES:
 
-    1. Brief MRI analysis summary
-    2. Explanation of tumour detection findings
-    3. Severity interpretation based on confidence score
-    4. Possible medical implications
-    5. Recommended next steps
-    6. Short disclaimer that this is AI-assisted analysis only
+    - Focus ONLY on the final diagnosis.
 
-    Keep the explanation professional, concise, and medically informative.
+    - Do NOT mention:
+      AI models,
+      neural networks,
+      ResNet50,
+      Swin Transformer,
+      ensemble models,
+      model disagreements,
+      segmentation,
+      tissue boundaries,
+      healthy tissue comparison,
+      or detailed radiology interpretation.
 
-    Format the response using simple HTML tags such as:
+    - Explain the result in a simple,
+      professional,
+      medically responsible,
+      and realistic way.
+
+    - If no tumour is detected:
+
+      * Provide a calm and reassuring explanation.
+
+      * Explain that no strong
+        tumour-related abnormalities
+        were identified in the MRI scan.
+
+      * Do NOT create fear,
+        panic,
+        or excessive uncertainty.
+
+      * Recommend medical consultation
+        only if symptoms persist.
+
+    - If tumour is detected:
+
+      * Clearly state that
+        tumour-related abnormalities
+        were identified in the MRI scan.
+
+      * Explain that the findings may
+        indicate the presence of a brain tumour.
+
+      * Recommend professional medical
+        evaluation and follow-up imaging.
+
+      * Clearly explain that this is
+        NOT a confirmed medical diagnosis.
+
+      * Keep the explanation calm,
+        professional,
+        and medically responsible.
+
+    - Avoid dramatic or fear-inducing language.
+
+    - Do NOT use phrases such as:
+      "critical red flag",
+      "life-threatening",
+      "high-risk",
+      "severe abnormality",
+      "missed tumour",
+      "vascular malformation".
+
+    The report should include:
+
+    1. Analysis Summary
+    2. Diagnosis Report
+    3. Recommended Next Steps
+    4. Disclaimer
+
+    For the Diagnosis Report section:
+
+    - Clearly display:
+
+      Diagnosis: Tumor Detected
+
+      OR
+
+      Diagnosis: No Tumor Detected
+
+    - Include the confidence score.
+
+    - Explain the meaning of the result
+      in a patient-friendly and medically
+      responsible way.
+
+    - If tumour detected:
+      explain that tumour-related
+      abnormalities were identified
+      in the MRI scan.
+
+    - If no tumour detected:
+      explain that no strong
+      tumour-related abnormalities
+      were identified.
+
+    Keep the report:
+
+    - concise
+    - medically responsible
+    - realistic
+    - easy to understand
+
+    Use HTML formatting:
     <h2>, <b>, <br>, <ul>, <li>
 
     """
-
+#here
     try:
+
+        print("Using Gemini API...")
 
         response = medical_agent.run(prompt)
 
         gemini_report = response.content
 
-        if "RESOURCE_EXHAUSTED" in gemini_report or "error" in gemini_report.lower():
+        if (
+            "RESOURCE_EXHAUSTED" in gemini_report
+            or "error" in gemini_report.lower()
+        ):
             raise Exception("Gemini quota exceeded")
 
-    except Exception as e:
+        print("Gemini Success")
 
-        print("Gemini Error:", e)
+    except Exception as gemini_error:
 
-        if diagnosis == "Tumor Detected":
+        print("Gemini Failed:", gemini_error)
 
-            severity = "high" if average_probability >= 85 else "moderate"
+        try:
 
-            gemini_report = f"""
+            print("Switching to DeepSeek API...")
 
-            <h2 style='color:red;'>
-            AI Medical Analysis Report
-            </h2>
+            deepseek_response = client.chat.completions.create(
 
-            <br/>
+                model="deepseek-chat",
 
-            <b>Final Diagnosis:</b>
-            Tumor Detected
+                messages=[
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ]
 
-            <br/><br/>
+            )
 
-            <b>ResNet50 Confidence:</b>
-            {resnet_probability}%
+            gemini_report = (
+                deepseek_response
+                .choices[0]
+                .message
+                .content
+            )
 
-            <br/>
+            print("DeepSeek Success")
 
-            <b>Swin Transformer Confidence:</b>
-            {swin_probability}%
+        except Exception as deepseek_error:
 
-            <br/>
+            print("DeepSeek Failed:", deepseek_error)
 
-            <b>Combined AI Confidence:</b>
-            {average_probability}%
+            print("Using Rule-Based Fallback System...")
 
-            <br/><br/>
+            if diagnosis == "Tumor Detected":
 
-            The uploaded MRI brain scan shows abnormal
-            patterns that may indicate the presence of
-            a brain tumor. The AI models detected tumour-related
-            features with a {severity} confidence level.
+                severity = (
+                    "high"
+                    if average_probability >= 85
+                    else "moderate"
+                )
 
-            <br/><br/>
+                gemini_report = f"""
 
-            The detected region may contain irregular tissue
-            structures, abnormal intensity patterns, or possible
-            mass effects commonly associated with brain tumours.
+                <h2 style='color:red;'>
+                AI Medical Analysis Report
+                </h2>
 
-            <br/><br/>
+                <br/>
 
-            <b>Recommended Actions:</b>
+                <b>Final Diagnosis:</b>
+                Tumor Detected
 
-            <ul>
-                <li>Consult a neurologist or radiologist for professional evaluation.</li>
-                <li>Perform additional MRI sequences or clinical examinations.</li>
-                <li>Review Grad-CAM heatmap visualization for suspicious regions.</li>
-                <li>Use the AI report as supportive analysis only.</li>
-            </ul>
+                <br/><br/>
 
-            <br/>
+                <b>ResNet50 Confidence:</b>
+                {resnet_probability}%
 
-            <b>Disclaimer:</b>
-            This AI-generated analysis is intended for educational
-            and research purposes only and should not replace
-            professional medical diagnosis.
+                <br/>
 
-            """
+                <b>Swin Transformer Confidence:</b>
+                {swin_probability}%
 
-        else:
+                <br/>
 
-            gemini_report = f"""
+                <b>Combined AI Confidence:</b>
+                {average_probability}%
 
-            <h2 style='color:green;'>
-            AI Medical Analysis Report
-            </h2>
+                <br/><br/>
 
-            <br/>
+                The uploaded MRI brain scan shows abnormal
+                patterns that may indicate the presence
+                of a brain tumor.
 
-            <b>Final Diagnosis:</b>
-            No Tumor Detected
+                <br/><br/>
 
-            <br/><br/>
+                The AI models detected tumour-related
+                features with a {severity}
+                confidence level.
 
-            <b>ResNet50 Confidence:</b>
-            {resnet_probability}%
+                <br/><br/>
 
-            <br/>
+                <b>Recommended Actions:</b>
 
-            <b>Swin Transformer Confidence:</b>
-            {swin_probability}%
+                <ul>
+                    <li>Consult a neurologist.</li>
+                    <li>Perform additional MRI scans.</li>
+                    <li>Use Grad-CAM for visual interpretation.</li>
+                </ul>
 
-            <br/>
+                <br/>
 
-            <b>Combined AI Confidence:</b>
-            {average_probability}%
+                <b>Disclaimer:</b>
+                This AI-generated analysis is for
+                educational purposes only.
 
-            <br/><br/>
+                """
 
-            The uploaded MRI brain scan does not show
-            significant tumour-related abnormalities based
-            on the AI model analysis.
+            else:
 
-            <br/><br/>
+                gemini_report = f"""
 
-            The brain structures appear relatively normal,
-            and no major suspicious tumour patterns were
-            identified by the classification models.
+                <h2 style='color:green;'>
+                AI Medical Analysis Report
+                </h2>
 
-            <br/><br/>
+                <br/>
 
-            <b>Recommended Actions:</b>
+                <b>Final Diagnosis:</b>
+                No Tumor Detected
 
-            <ul>
-                <li>Continue regular medical monitoring if necessary.</li>
-                <li>Consult a medical professional if symptoms persist.</li>
-                <li>Use the Grad-CAM visualization for additional interpretation support.</li>
-            </ul>
+                <br/><br/>
 
-            <br/>
+                <b>ResNet50 Confidence:</b>
+                {resnet_probability}%
 
-            <b>Disclaimer:</b>
-            This AI-generated analysis is intended for educational
-            and research purposes only and should not replace
-            professional medical diagnosis.
+                <br/>
 
-            """
+                <b>Swin Transformer Confidence:</b>
+                {swin_probability}%
+
+                <br/>
+
+                <b>Combined AI Confidence:</b>
+                {average_probability}%
+
+                <br/><br/>
+
+                No significant tumour-related
+                abnormalities were detected.
+
+                <br/><br/>
+
+                <b>Recommended Actions:</b>
+
+                <ul>
+                    <li>Continue medical monitoring.</li>
+                    <li>Consult a doctor if symptoms persist.</li>
+                </ul>
+
+                <br/>
+
+                <b>Disclaimer:</b>
+                This AI-generated analysis is for
+                educational purposes only.
+
+                """
 #pdf report
     pdf_path = generate_pdf_report(
         filename=filename,
