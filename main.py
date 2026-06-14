@@ -36,6 +36,10 @@ from agno.models.google import Gemini
 
 from openai import OpenAI
 
+from authlib.integrations.starlette_client import OAuth
+from starlette.middleware.sessions import SessionMiddleware
+from fastapi.responses import RedirectResponse
+
 app = FastAPI()
 #gemini ai LLM 
 GOOGLE_API_KEY = "AIzaSyBmTgGQgnumWQnoUsIoYetEJE2n68tDtrQ"
@@ -59,6 +63,23 @@ app.mount(
     name="static"
 )
 
+app.add_middleware(
+    SessionMiddleware,
+    secret_key="super-secret-key",
+    same_site="lax",
+    https_only=False
+)
+
+oauth = OAuth()
+oauth.register(
+    name="google",
+    client_id="412792903835-4inaeh535l950ghl384p7viv17dnilcu.apps.googleusercontent.com",
+    client_secret="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",
+    server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
+    client_kwargs={
+        "scope": "openid email profile"
+    }
+)
 
 templates = Jinja2Templates(
     directory="templates"
@@ -245,9 +266,48 @@ def generate_pdf_report(
     doc.build(story)
 
     return pdf_path
+
+#auth
+@app.get("/login")
+async def login(request: Request):
+
+    redirect_uri = request.url_for("auth")
+
+    return await oauth.google.authorize_redirect(
+        request,
+        redirect_uri
+    )
+
+
+@app.get("/auth")
+async def auth(request: Request):
+
+    token = await oauth.google.authorize_access_token(request)
+
+    user = token["userinfo"]
+
+    request.session["user"] = user
+
+    return RedirectResponse("/home")
 #home
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
+
+    return templates.TemplateResponse(
+        request,
+        "index.html",
+        {
+            "request": request
+        }
+    )
+
+
+
+@app.get("/home", response_class=HTMLResponse)
+async def home(request: Request):
+
+    if "user" not in request.session:
+        return RedirectResponse("/")
 
     return templates.TemplateResponse(
         request,
