@@ -36,3 +36,5 @@ pip install reportlab
 pip install google-genai
 
 to straight away open our application without downloading the resources, https://unhappily-browbeat-troubling.ngrok-free.dev/
+
+for the models, please visit (https://drive.google.com/drive/folders/1D7Uu5DU3z8QuzJ6k4-Bl8F_DopwE1JLr?usp=sharing)
